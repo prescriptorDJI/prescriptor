@@ -5,6 +5,7 @@
      2. Comparar vuelos (dos GeoTIFF del índice de fechas distintas): mapa de cambio y % de área
      3. Cuaderno de campo: registro de aplicaciones, CSV para Excel y certificado de aplicación
      4. Cotizador: cotización imprimible con logo, IVA y número correlativo
+     5. Clima para aplicar (Open-Meteo): condiciones actuales, 48 h hora a hora y semáforo de aplicación
    Todo funciona en el navegador, sin servidor. Lo que se guarda queda en este navegador.
    ===================================================================== */
 (() => {
@@ -124,11 +125,12 @@ ${cuerpo}</div></body></html>`;
         <button role="tab" data-t="comparar" aria-selected="false">Comparar vuelos</button>
         <button role="tab" data-t="cuaderno" aria-selected="false">Cuaderno de campo</button>
         <button role="tab" data-t="cotizador" aria-selected="false">Cotizador</button>
+        <button role="tab" data-t="clima" aria-selected="false">Clima</button>
       </div>
       <button class="hz-x" type="button" aria-label="Cerrar">×</button></div>
     <div class="hz-body">
       <section data-s="puntos"></section><section data-s="comparar" hidden></section>
-      <section data-s="cuaderno" hidden></section><section data-s="cotizador" hidden></section>
+      <section data-s="cuaderno" hidden></section><section data-s="cotizador" hidden></section><section data-s="clima" hidden></section>
     </div></div>`;
   const sec = n => dlg.querySelector('section[data-s="' + n + '"]');
   let pestana = 'puntos';
@@ -137,7 +139,8 @@ ${cuerpo}</div></body></html>`;
     dlg.hidden = false;
     dlg.querySelectorAll('.hz-tabs button').forEach(b => b.setAttribute('aria-selected', String(b.dataset.t === pestana)));
     dlg.querySelectorAll('.hz-body section').forEach(s => { s.hidden = s.dataset.s !== pestana; });
-    ({ puntos: initPuntos, comparar: initComparar, cuaderno: initCuaderno, cotizador: initCotizador })[pestana]();
+    const r = ({ puntos: initPuntos, comparar: initComparar, cuaderno: initCuaderno, cotizador: initCotizador, clima: initClima })[pestana]();
+    if (pestana === 'cuaderno') Promise.resolve(r).then(aplicarClimaPendiente);
   }
   const cerrar = () => { dlg.hidden = true; };
   dlg.querySelector('.hz-x').onclick = cerrar;
@@ -576,6 +579,217 @@ ${ps.map(p => `<wpt lat="${p.lat.toFixed(7)}" lon="${p.lon.toFixed(7)}"><name>${
       <p class="muted" style="margin-top:28px">Valores en pesos chilenos. La superficie final se ajusta según el límite de aplicación definido en la prescripción.</p>`, 'cotizacion_' + folio);
   }
 
+  // =================================================================
+  // 5) CLIMA PARA APLICAR (Open-Meteo)
+  // =================================================================
+  // Plan gratuito de Open-Meteo: solo uso no comercial. Con un plan pagado se pega la clave en «Configuración»
+  // y se usa el servidor de clientes.
+  const WK = 'presc_clima';
+  const LIM0 = { vMax: 15, vPrec: 10, vMin: 2, rMax: 20, tMax: 30, tMin: 5, hrMin: 40, lluvia: 0.2, prob: 40, dtMin: 2, dtMax: 8, dtNo: 10 };
+  const cfgClima = () => ({ lim: { ...LIM0, ...(ls.get(WK, {}).lim || {}) }, clave: ls.get(WK, {}).clave || '', lugar: ls.get(WK, {}).lugar || null });
+  const guardarClima = c => ls.set(WK, { ...ls.get(WK, {}), ...c });
+  let climaDatos = null, climaPendiente = null;
+
+  // Delta T = temperatura seca − temperatura de bulbo húmedo (fórmula de Stull, 2011)
+  function deltaT(t, hr) {
+    if (!Number.isFinite(t) || !Number.isFinite(hr)) return NaN;
+    const tw = t * Math.atan(0.151977 * Math.sqrt(hr + 8.313659)) + Math.atan(t + hr) - Math.atan(hr - 1.676331) +
+      0.00391838 * Math.pow(hr, 1.5) * Math.atan(0.023101 * hr) - 4.686035;
+    return t - tw;
+  }
+  const DIRS = ['N', 'NNE', 'NE', 'ENE', 'E', 'ESE', 'SE', 'SSE', 'S', 'SSO', 'SO', 'OSO', 'O', 'ONO', 'NO', 'NNO'];
+  const rumbo = g => Number.isFinite(g) ? DIRS[Math.round(((g % 360) + 360) % 360 / 22.5) % 16] : '—';
+
+  // Evalúa una hora: devuelve { nivel: 0 apto | 1 precaución | 2 no aplicar, motivos: [...] }
+  function evaluar(h, L) {
+    const m = [], sube = (n, txt) => { m.push({ n, txt }); };
+    if (h.viento > L.vMax) sube(2, 'viento ' + num(h.viento, 0) + ' km/h');
+    else if (h.viento > L.vPrec) sube(1, 'viento ' + num(h.viento, 0) + ' km/h');
+    else if (h.viento < L.vMin) sube(1, 'calma (posible inversión térmica)');
+    if (h.rafaga > L.rMax) sube(2, 'ráfagas ' + num(h.rafaga, 0) + ' km/h');
+    if (h.lluvia >= L.lluvia) sube(2, 'lluvia ' + num(h.lluvia, 1) + ' mm');
+    else if (Number.isFinite(h.prob) && h.prob >= L.prob) sube(1, 'probabilidad de lluvia ' + num(h.prob, 0) + ' %');
+    if (h.temp > L.tMax) sube(2, 'temperatura ' + num(h.temp, 0) + ' °C');
+    else if (h.temp < L.tMin) sube(1, 'temperatura ' + num(h.temp, 0) + ' °C');
+    if (Number.isFinite(h.dt)) {
+      if (h.dt > L.dtNo) sube(2, 'Delta T ' + num(h.dt, 1) + ' (evaporación alta)');
+      else if (h.dt > L.dtMax) sube(1, 'Delta T ' + num(h.dt, 1));
+      else if (h.dt < L.dtMin) sube(1, 'Delta T ' + num(h.dt, 1) + ' (gotas finas a la deriva)');
+    }
+    if (h.hr < L.hrMin) sube(1, 'humedad ' + num(h.hr, 0) + ' %');
+    return { nivel: m.reduce((t, x) => Math.max(t, x.n), 0), motivos: m.sort((a, b) => b.n - a.n).map(x => x.txt) };
+  }
+  const NIV = [{ t: 'Apto', c: '#1f8a4c', e: '🟢' }, { t: 'Precaución', c: '#d08a00', e: '🟡' }, { t: 'No aplicar', c: '#c62839', e: '🔴' }];
+
+  async function ubicacionVuelo() {
+    const fc = await cuadros();
+    if (!fc || !fc.features.length) return null;
+    let sx = 0, sy = 0, n = 0;
+    for (const f of fc.features) { const r = f.geometry.coordinates[0]; sx += r[0][0]; sy += r[0][1]; n++; }
+    return { lat: sy / n, lon: sx / n, nombre: proyecto() || 'Vuelo cargado' };
+  }
+
+  function initClima() {
+    const s = sec('clima');
+    if (!s.dataset.ok) {
+      s.dataset.ok = 1;
+      const c = cfgClima();
+      s.innerHTML = `<h3>Clima para aplicar</h3>
+        <p class="hint">Condiciones actuales y pronóstico hora a hora en la ubicación del vuelo, con un semáforo de cuándo conviene aplicar.</p>
+        <div class="hz-grid">
+          <label class="wide">Ubicación<input id="hzWLugar" type="text" placeholder="Comuna o localidad, por ejemplo: Requínoa"></label>
+        </div>
+        <div class="hz-btns">
+          <button class="btn primary" id="hzWVuelo" type="button">Usar la ubicación del vuelo</button>
+          <button class="btn" id="hzWBuscar" type="button">Buscar comuna</button>
+          <button class="btn" id="hzWGps" type="button">Mi ubicación</button>
+          <button class="btn" id="hzWAct" type="button" hidden>Actualizar</button>
+        </div>
+        <p class="hint" id="hzWDonde"></p>
+        <div id="hzWRes"></div>
+        <details style="margin-top:14px"><summary style="cursor:pointer;font-weight:700">Configuración del semáforo</summary>
+          <p class="hint" style="margin-top:8px">Valores de partida. Ajústalos según tu dron, el producto y la etiqueta. Se guardan en este navegador.</p>
+          <div class="hz-grid" id="hzWLim">
+            ${[['vMax', 'Viento máximo (km/h)'], ['vPrec', 'Viento: precaución desde (km/h)'], ['vMin', 'Viento mínimo (km/h)'], ['rMax', 'Ráfaga máxima (km/h)'],
+               ['tMax', 'Temperatura máxima (°C)'], ['tMin', 'Temperatura mínima (°C)'], ['hrMin', 'Humedad mínima (%)'], ['lluvia', 'Lluvia: no aplicar desde (mm/h)'],
+               ['prob', 'Prob. de lluvia: precaución desde (%)'], ['dtMin', 'Delta T mínimo'], ['dtMax', 'Delta T ideal hasta'], ['dtNo', 'Delta T: no aplicar sobre']]
+              .map(([k, t]) => `<label>${t}<input type="number" step="any" data-l="${k}" value="${c.lim[k]}"></label>`).join('')}
+          </div>
+          <div class="hz-btns"><button class="btn" id="hzWRest" type="button">Restablecer valores de partida</button></div>
+          <div class="hz-grid"><label class="wide">Clave de API de Open-Meteo (solo si contratas el plan comercial)<input id="hzWKey" type="text" value="${esc(c.clave)}" placeholder="Déjalo vacío para usar el plan gratuito (uso no comercial)"></label></div>
+        </details>
+        <p class="hint" style="margin-top:12px">Datos meteorológicos: <a href="https://open-meteo.com/" target="_blank" rel="noopener">Open-Meteo.com</a> (CC BY 4.0). Son estimaciones de modelos meteorológicos para la coordenada, no mediciones de una estación en el predio: confirma el viento en terreno antes de volar.</p>`;
+      $('hzWVuelo').onclick = async () => {
+        const u = await ubicacionVuelo();
+        if (!u) { $('hzWDonde').textContent = 'No hay un vuelo cargado: busca la comuna o usa tu ubicación.'; return; }
+        consultar(u);
+      };
+      $('hzWBuscar').onclick = buscarLugar;
+      $('hzWLugar').onkeydown = e => { if (e.key === 'Enter') { e.preventDefault(); buscarLugar(); } };
+      $('hzWGps').onclick = () => {
+        if (!navigator.geolocation) { $('hzWDonde').textContent = 'Este navegador no entrega la ubicación.'; return; }
+        $('hzWDonde').textContent = 'Obteniendo tu ubicación…';
+        navigator.geolocation.getCurrentPosition(p => consultar({ lat: p.coords.latitude, lon: p.coords.longitude, nombre: 'Mi ubicación' }),
+          () => { $('hzWDonde').textContent = 'No se pudo obtener tu ubicación (revisa el permiso del navegador).'; }, { timeout: 15000 });
+      };
+      $('hzWAct').onclick = () => { const l = cfgClima().lugar; if (l) consultar(l); };
+      $('hzWLim').oninput = e => {
+        const k = e.target.dataset.l, v = parseFloat(e.target.value); if (!k || !Number.isFinite(v)) return;
+        const lim = { ...cfgClima().lim, [k]: v }; guardarClima({ lim }); if (climaDatos) pintarClima();
+      };
+      $('hzWRest').onclick = () => { guardarClima({ lim: { ...LIM0 } }); s.querySelectorAll('[data-l]').forEach(i => { i.value = LIM0[i.dataset.l]; }); if (climaDatos) pintarClima(); };
+      $('hzWKey').onchange = e => guardarClima({ clave: e.target.value.trim() });
+    }
+    // Al abrir: si hay vuelo, su ubicación; si no, la última usada
+    if (!climaDatos) {
+      ubicacionVuelo().then(u => { const l = u || cfgClima().lugar; if (l) consultar(l); else $('hzWDonde').textContent = 'Carga un vuelo, busca una comuna o usa tu ubicación.'; });
+    }
+  }
+
+  async function buscarLugar() {
+    const q = $('hzWLugar').value.trim(); if (!q) { $('hzWLugar').focus(); return; }
+    $('hzWDonde').textContent = 'Buscando «' + q + '»…';
+    try {
+      const r = await fetch('https://geocoding-api.open-meteo.com/v1/search?count=5&language=es&format=json&name=' + encodeURIComponent(q));
+      const d = await r.json();
+      const res = (d.results || []).sort((a, b) => (b.country_code === 'CL') - (a.country_code === 'CL'));
+      if (!res.length) { $('hzWDonde').textContent = 'No encontré «' + q + '». Prueba con el nombre de la comuna.'; return; }
+      const x = res[0];
+      consultar({ lat: x.latitude, lon: x.longitude, nombre: [x.name, x.admin1, x.country].filter(Boolean).join(', ') });
+    } catch (e) { $('hzWDonde').textContent = 'No se pudo buscar: revisa tu conexión a internet.'; }
+  }
+
+  async function consultar(lugar) {
+    guardarClima({ lugar });
+    $('hzWDonde').textContent = 'Consultando el clima en ' + lugar.nombre + '…';
+    const c = cfgClima();
+    const vars = 'temperature_2m,relative_humidity_2m,wind_speed_10m,wind_gusts_10m,wind_direction_10m,precipitation';
+    const host = c.clave ? 'https://customer-api.open-meteo.com' : 'https://api.open-meteo.com';
+    const url = host + '/v1/forecast?latitude=' + lugar.lat.toFixed(4) + '&longitude=' + lugar.lon.toFixed(4) +
+      '&current=' + vars + ',weather_code&hourly=' + vars + ',precipitation_probability' +
+      '&wind_speed_unit=kmh&timezone=auto&forecast_hours=48' + (c.clave ? '&apikey=' + encodeURIComponent(c.clave) : '');
+    try {
+      const r = await fetch(url);
+      const d = await r.json();
+      if (!r.ok || d.error) throw new Error(d.reason || ('error ' + r.status));
+      climaDatos = { lugar, d, hora: new Date() };
+      pintarClima();
+    } catch (e) {
+      console.error(e);
+      $('hzWDonde').textContent = 'No se pudo obtener el clima (' + (e.message || e) + '). Revisa tu conexión' + (c.clave ? ' o la clave de API.' : '.');
+    }
+  }
+
+  function horas() {
+    const H = climaDatos.d.hourly, n = (H.time || []).length, out = [];
+    for (let i = 0; i < n; i++) {
+      const h = { t: H.time[i], temp: H.temperature_2m[i], hr: H.relative_humidity_2m[i], viento: H.wind_speed_10m[i], rafaga: H.wind_gusts_10m[i],
+        dir: H.wind_direction_10m[i], lluvia: H.precipitation[i], prob: (H.precipitation_probability || [])[i] };
+      h.dt = deltaT(h.temp, h.hr);
+      out.push(h);
+    }
+    return out;
+  }
+
+  // Ventanas: horas seguidas aptas (de día, entre 6 y 21 h)
+  function ventanas(hs, L) {
+    const v = []; let cur = null;
+    for (const h of hs) {
+      const hh = +h.t.slice(11, 13), ok = evaluar(h, L).nivel === 0 && hh >= 6 && hh <= 21;
+      if (ok) { if (!cur) cur = { ini: h.t, fin: h.t, n: 0 }; cur.fin = h.t; cur.n++; }
+      else if (cur) { v.push(cur); cur = null; }
+    }
+    if (cur) v.push(cur);
+    return v.filter(x => x.n >= 2).sort((a, b) => b.n - a.n).slice(0, 4).sort((a, b) => a.ini.localeCompare(b.ini));
+  }
+  const diaHora = t => { const d = new Date(t); return d.toLocaleDateString('es-CL', { weekday: 'short', day: 'numeric' }) + ' ' + t.slice(11, 16); };
+
+  function pintarClima() {
+    const { lugar, d, hora } = climaDatos, L = cfgClima().lim, C = d.current || {};
+    const ahora = { temp: C.temperature_2m, hr: C.relative_humidity_2m, viento: C.wind_speed_10m, rafaga: C.wind_gusts_10m, dir: C.wind_direction_10m, lluvia: C.precipitation };
+    const hs = horas();
+    const h0 = hs.find(h => h.t.slice(0, 13) === String(C.time || '').slice(0, 13));
+    ahora.prob = h0 ? h0.prob : NaN;
+    ahora.dt = deltaT(ahora.temp, ahora.hr);
+    const ev = evaluar(ahora, L), nv = NIV[ev.nivel], vs = ventanas(hs, L);
+    $('hzWAct').hidden = false;
+    $('hzWDonde').innerHTML = esc(lugar.nombre) + ' · ' + lugar.lat.toFixed(4) + ', ' + lugar.lon.toFixed(4) + ' · consultado a las ' + hora.toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' });
+    $('hzWRes').innerHTML = `
+      <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;padding:12px 14px;border-radius:14px;border:2px solid ${nv.c};margin:6px 0 10px">
+        <strong style="font-size:20px;color:${nv.c}">${nv.e} Ahora: ${nv.t}</strong>
+        <span class="hint" style="margin:0">${ev.motivos.length ? esc(ev.motivos.join(' · ')) : 'Condiciones dentro de los límites configurados.'}</span>
+        <button class="btn" id="hzWCuad" type="button" style="margin-left:auto">Usar en el cuaderno de campo</button></div>
+      <div class="hz-cards">
+        <div><strong>${num(ahora.temp, 1)} °C</strong><span>temperatura</span></div>
+        <div><strong>${num(ahora.viento, 0)} km/h</strong><span>viento ${rumbo(ahora.dir)} · ráfagas ${num(ahora.rafaga, 0)} km/h</span></div>
+        <div><strong>${num(ahora.hr, 0)} %</strong><span>humedad relativa</span></div>
+        <div><strong>${num(ahora.dt, 1)}</strong><span>Delta T (ideal ${num(L.dtMin, 0)}–${num(L.dtMax, 0)})</span></div>
+        <div><strong>${num(ahora.lluvia, 1)} mm</strong><span>lluvia${Number.isFinite(ahora.prob) ? ' · prob. ' + num(ahora.prob, 0) + ' %' : ''}</span></div>
+      </div>
+      <h3 style="margin-top:14px">Mejores ventanas para aplicar</h3>
+      ${vs.length ? '<div class="hz-btns">' + vs.map(v => `<span class="chip" style="background:#1f8a4c;color:#fff;padding:6px 12px;border-radius:999px;font-weight:700;font-size:13px">${diaHora(v.ini)}–${v.fin.slice(11, 13)}:59 · ${v.n} h</span>`).join('') + '</div>'
+        : '<p class="hint">No hay dos horas seguidas aptas (de 6 a 21 h) en las próximas 48 horas con los límites configurados.</p>'}
+      <h3 style="margin-top:14px">Próximas 48 horas</h3>
+      <div style="overflow-x:auto"><table class="hz-tab" style="min-width:760px"><thead><tr><th>Hora</th><th></th><th class="n">°C</th><th class="n">Viento</th><th class="n">Ráfagas</th><th>Dir.</th><th class="n">HR %</th><th class="n">Delta T</th><th class="n">Lluvia</th><th>Motivo</th></tr></thead><tbody>
+      ${hs.map(h => { const e = evaluar(h, L); const nn = NIV[e.nivel]; return `<tr style="background:color-mix(in srgb, ${nn.c} 9%, transparent)">
+        <td style="white-space:nowrap">${diaHora(h.t)}</td><td title="${nn.t}">${nn.e}</td><td class="n">${num(h.temp, 0)}</td><td class="n">${num(h.viento, 0)}</td><td class="n">${num(h.rafaga, 0)}</td>
+        <td>${rumbo(h.dir)}</td><td class="n">${num(h.hr, 0)}</td><td class="n">${num(h.dt, 1)}</td>
+        <td class="n">${h.lluvia > 0 ? num(h.lluvia, 1) + ' mm' : (Number.isFinite(h.prob) && h.prob ? num(h.prob, 0) + ' %' : '—')}</td>
+        <td><small>${esc(e.motivos.join(' · '))}</small></td></tr>`; }).join('')}
+      </tbody></table></div>`;
+    $('hzWCuad').onclick = () => { climaPendiente = { temp: ahora.temp, viento: ahora.viento, hr: ahora.hr, lugar: lugar.nombre, nivel: nv.t }; abrir('cuaderno'); };
+  }
+  // Pasa las condiciones al formulario del cuaderno de campo
+  function aplicarClimaPendiente() {
+    if (!climaPendiente) return;
+    const c = climaPendiente; climaPendiente = null;
+    const set = (k, v) => { const el = $('hzC_' + k); if (el && Number.isFinite(v)) el.value = Math.round(v * 10) / 10; };
+    set('temp', c.temp); set('viento', c.viento); set('hr', c.hr);
+    const obs = $('hzC_obs');
+    if (obs) obs.value = ((obs.value ? obs.value + ' · ' : '') + 'Clima Open-Meteo ' + new Date().toLocaleString('es-CL', { dateStyle: 'short', timeStyle: 'short' }) + ': ' + c.nivel).slice(0, 300);
+    aviso('Temperatura, viento y humedad copiados al cuaderno de campo.');
+  }
+
   // ---------- Botón en la barra superior ----------
   function iniciar() {
     document.body.appendChild(dlg);
@@ -583,7 +797,7 @@ ${ps.map(p => `<wpt lat="${p.lat.toFixed(7)}" lon="${p.lon.toFixed(7)}"><name>${
     if (!tools || $('hzOpen')) return;
     const b = document.createElement('button');
     b.type = 'button'; b.id = 'hzOpen'; b.className = 'theme-btn hz-open';
-    b.title = 'Puntos de inspección, comparar vuelos, cuaderno de campo y cotizador';
+    b.title = 'Puntos de inspección, comparar vuelos, cuaderno de campo, cotizador y clima';
     b.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.7 6.3a4 4 0 0 0-5.4 5.4L3 18l3 3 6.3-6.3a4 4 0 0 0 5.4-5.4l-2.5 2.5-2.4-.6-.6-2.4Z"/></svg>Herramientas';
     b.onclick = () => abrir();
     const modo = tools.querySelector('.ps-modo');
