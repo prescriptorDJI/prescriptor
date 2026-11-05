@@ -73,65 +73,154 @@ ${cuerpo}</div></body></html>`;
     return { ha, litros: lt, dosisMedia: ha ? lt / ha : 0 };
   }
 
-  // ---------- Estilos ----------
+  // ---------- Diseño: «cabina de misión agrícola» ----------
+  // Colores de la marca (sol naranja y hoja verde) sobre azul petróleo. Chakra Petch para lecturas, IBM Plex Sans para texto.
+  if (!document.getElementById('hzFuentes')) {
+    const f = document.createElement('link');
+    f.id = 'hzFuentes'; f.rel = 'stylesheet';
+    f.href = 'https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap';
+    document.head.appendChild(f);
+  }
+  const ICO = {
+    puntos: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3.2"/><path d="M12 1.8v3.4M12 18.8v3.4M1.8 12h3.4M18.8 12h3.4"/></svg>',
+    comparar: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="8" height="16" rx="1.5"/><rect x="13" y="4" width="8" height="16" rx="1.5"/><path d="M6 15l2-3 2 2M16 11l2-2 1.5 1.5M16 16h3"/></svg>',
+    cuaderno: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h11a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6z"/><path d="M6 3v18M3.5 7H6M3.5 12H6M3.5 17H6"/><path d="M15.5 8.5c-3 0-4.5 2-4.5 5 2.7 0 4.5-1.6 4.5-5zM11 13.5l-1.5 2"/></svg>',
+    cotizador: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M5 2.5h14v19l-2.4-1.6-2.3 1.6-2.3-1.6-2.3 1.6-2.3-1.6L5 21.5z"/><path d="M14.4 8.2c-.5-.8-1.4-1.2-2.4-1.2-1.4 0-2.4.7-2.4 1.8 0 2.5 4.9 1.4 4.9 3.9 0 1.1-1.1 1.9-2.5 1.9-1.1 0-2-.5-2.5-1.3M12 5.6V7M12 13.6V15"/></svg>',
+    clima: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="16.5" cy="7" r="3"/><path d="M16.5 1.5v1.2M21.6 7h1.2M20.2 3.3l.8-.8M20.2 10.7l.8.8"/><path d="M2 10h9.5a2.5 2.5 0 1 0-2.4-3.2M2 14h14a2.5 2.5 0 1 1-2.4 3.2M2 18h6"/></svg>',
+  };
+  const TOOLS = [
+    { t: 'puntos', n: 'Puntos de inspección', d: 'Dónde revisar en terreno' },
+    { t: 'comparar', n: 'Comparar vuelos', d: 'Evolución entre fechas' },
+    { t: 'clima', n: 'Clima', d: 'Ventanas para aplicar' },
+    { t: 'cuaderno', n: 'Cuaderno de campo', d: 'Registro y certificados' },
+    { t: 'cotizador', n: 'Cotizador', d: 'Cotización del servicio' },
+  ];
   const css = document.createElement('style');
   css.textContent = `
   .hz-open{display:inline-flex;align-items:center;gap:7px}
-  .hz-open svg{width:16px;height:16px}
-  .hz-dlg{position:fixed;inset:0;z-index:5000;background:rgba(10,14,20,.55);display:grid;place-items:center;padding:16px}
+  .hz-open svg{width:17px;height:17px}
+  .hz-dlg{--b0:#0F2028;--b1:#152B35;--b2:#1B3541;--ln:#2A4B58;--tx:#EAF2EF;--mu:#93AEB3;--sol:#F6A623;--hoja:#74BF56;--alerta:#E5583F;--ambar:#E8B931;
+    --fd:'Chakra Petch','IBM Plex Sans',system-ui,sans-serif;--ft:'IBM Plex Sans','Segoe UI',system-ui,sans-serif;
+    position:fixed;inset:0;z-index:5000;background:rgba(4,12,16,.62);backdrop-filter:blur(3px);display:grid;place-items:center;padding:16px;font-family:var(--ft)}
   .hz-dlg[hidden]{display:none}
-  .hz-box{width:min(1080px,100%);height:min(860px,calc(100vh - 32px));background:var(--panel,#fff);color:var(--fg,#1a1b23);border-radius:18px;box-shadow:0 24px 70px rgba(0,0,0,.35);display:flex;flex-direction:column;overflow:hidden}
-  .hz-top{display:flex;align-items:center;gap:6px;padding:10px 12px;border-bottom:1px solid var(--line,#d5dde6);flex-wrap:wrap}
-  .hz-top h2{margin:0 10px 0 6px;font-size:15px}
-  .hz-tabs{display:flex;gap:4px;flex-wrap:wrap}
-  .hz-tabs button{border:0;background:transparent;color:var(--muted,#5e6e82);font:inherit;font-size:13px;font-weight:700;padding:8px 12px;border-radius:10px;cursor:pointer}
-  .hz-tabs button[aria-selected="true"]{background:color-mix(in srgb,var(--accent,#1e88ff) 14%,transparent);color:var(--accent,#1e88ff)}
-  .hz-x{margin-left:auto;border:0;background:transparent;color:var(--muted,#5e6e82);font-size:22px;line-height:1;width:36px;height:36px;border-radius:10px;cursor:pointer}
-  .hz-x:hover{background:color-mix(in srgb,var(--fg,#000) 8%,transparent)}
-  .hz-body{flex:1;overflow:auto;padding:16px 18px}
+  .hz-box{width:min(1180px,100%);height:min(880px,calc(100vh - 32px));background:var(--b0);color:var(--tx);border-radius:20px;border:1px solid var(--ln);
+    box-shadow:0 30px 80px rgba(0,0,0,.5);display:grid;grid-template-columns:236px minmax(0,1fr);grid-template-rows:minmax(0,1fr);overflow:hidden;font-size:14.5px;line-height:1.5}
+  .hz-rail{background:var(--b1);border-right:1px solid var(--ln);display:flex;flex-direction:column;padding:18px 12px 14px;gap:4px;
+    background-image:repeating-linear-gradient(115deg,transparent 0 22px,rgba(116,191,86,.035) 22px 23px)}
+  .hz-rail h2{font-family:var(--fd);font-weight:600;font-size:20px;letter-spacing:.02em;margin:0 8px 14px;color:var(--tx)}
+  .hz-nav{display:grid;gap:4px}
+  .hz-nav button{display:grid;grid-template-columns:38px 1fr;align-items:center;gap:2px 10px;text-align:left;border:1px solid transparent;background:transparent;
+    color:var(--mu);font:inherit;padding:9px 10px;border-radius:12px;cursor:pointer}
+  .hz-nav button svg{grid-row:span 2;width:38px;height:38px;padding:8px;border-radius:10px;background:var(--b2);color:var(--mu)}
+  .hz-nav button b{font-weight:600;font-size:14px;color:var(--tx)} .hz-nav button small{font-size:12px}
+  .hz-nav button:hover{background:rgba(255,255,255,.03)}
+  .hz-nav button[aria-selected="true"]{background:var(--b2);border-color:var(--ln)}
+  .hz-nav button[aria-selected="true"] svg{background:var(--sol);color:#2a1a00}
+  .hz-nav button:focus-visible,.hz-dlg .btn:focus-visible,.hz-x:focus-visible{outline:2px solid var(--sol);outline-offset:2px}
+  .hz-brand{margin-top:auto;padding:12px 8px 0;border-top:1px solid var(--ln)}
+  .hz-brand img{max-width:150px;max-height:34px;display:block;opacity:.92}
+  .hz-main{display:flex;flex-direction:column;min-width:0;min-height:0}
+  .hz-rail{min-height:0;overflow-y:auto}
+  .hz-head{display:flex;align-items:center;gap:14px;padding:18px 22px 14px;border-bottom:1px solid var(--ln)}
+  .hz-head .ic{width:46px;height:46px;flex:none;padding:10px;border-radius:14px;background:linear-gradient(140deg,var(--sol),#e08a0b);color:#2a1a00}
+  .hz-head .ic svg{width:100%;height:100%}
+  .hz-head h3{margin:0;font-family:var(--fd);font-weight:600;font-size:24px;letter-spacing:.01em;line-height:1.1}
+  .hz-head p{margin:2px 0 0;color:var(--mu);font-size:13.5px}
+  .hz-x{margin-left:auto;align-self:flex-start;border:1px solid var(--ln);background:transparent;color:var(--mu);font-size:22px;line-height:1;width:38px;height:38px;border-radius:11px;cursor:pointer}
+  .hz-x:hover{color:var(--tx);background:var(--b2)}
+  .hz-body{flex:1;overflow:auto;padding:18px 22px 26px}
   .hz-body section[hidden]{display:none}
-  .hz-body h3{margin:0 0 4px;font-size:16px}
-  .hz-body p.hint{margin:0 0 12px}
-  .hz-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px 12px;margin-bottom:12px}
-  .hz-grid label{display:grid;gap:4px;font-size:12px;font-weight:600;color:var(--muted,#5e6e82)}
-  .hz-grid input,.hz-grid select,.hz-grid textarea,.hz-tab input,.hz-tab select{font:inherit;font-size:14px;padding:8px 10px;border:1px solid var(--line,#d5dde6);border-radius:9px;background:var(--bg,#fff);color:var(--fg,#1a1b23);width:100%}
+  .hz-body section>h3:first-child{display:none}
+  .hz-body section>p.hint:first-of-type{display:none}
+  .hz-body h3{font-family:var(--fd);font-weight:600;font-size:17px;margin:18px 0 8px;color:var(--tx)}
+  .hz-dlg .hint{color:var(--mu)!important;font-size:13px!important;margin:0 0 12px}
+  .hz-dlg a{color:var(--sol)}
+  .hz-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px 14px;margin-bottom:14px}
+  .hz-grid label{display:grid;gap:6px;font-size:12.5px;font-weight:500;color:var(--mu)}
+  .hz-dlg input,.hz-dlg select,.hz-dlg textarea{font:inherit!important;font-size:14.5px!important;padding:9px 12px!important;border:1px solid var(--ln)!important;border-radius:10px!important;
+    background:var(--b1)!important;color:var(--tx)!important;width:100%;box-shadow:none!important;color-scheme:dark}
+  .hz-dlg input:focus,.hz-dlg select:focus{border-color:var(--sol)!important;outline:none;box-shadow:0 0 0 3px rgba(246,166,35,.18)!important}
+  .hz-dlg input[type=checkbox]{width:18px;height:18px;padding:0!important;accent-color:var(--sol)}
+  .hz-dlg input[type=file]{padding:7px!important}
   .hz-grid .wide{grid-column:1/-1}
-  .hz-btns{display:flex;gap:8px;flex-wrap:wrap;margin:6px 0 12px}
-  .hz-split{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);gap:16px;align-items:start}
-  .hz-map{width:100%;border:1px solid var(--line,#d5dde6);border-radius:12px;background:color-mix(in srgb,var(--fg,#000) 4%,transparent);display:block}
-  .hz-tab{width:100%;border-collapse:collapse;font-size:13px}
-  .hz-tab th,.hz-tab td{padding:7px 6px;border-bottom:1px solid var(--line,#d5dde6);text-align:left;vertical-align:middle}
-  .hz-tab th{font-size:11px;letter-spacing:.05em;text-transform:uppercase;color:var(--muted,#5e6e82)}
-  .hz-tab td.n,.hz-tab th.n{text-align:right}
-  .hz-tab a{color:var(--accent,#1e88ff);font-weight:600}
-  .hz-pin{display:inline-grid;place-items:center;width:22px;height:22px;border-radius:50%;color:#fff;font-size:11px;font-weight:800}
-  .hz-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin:10px 0}
-  .hz-cards div{border:1px solid var(--line,#d5dde6);border-radius:12px;padding:10px 12px}
-  .hz-cards strong{display:block;font-size:22px} .hz-cards span{font-size:12px;color:var(--muted,#5e6e82)}
-  .hz-leg{display:flex;gap:6px;align-items:center;font-size:12px;color:var(--muted,#5e6e82);margin-top:6px}
+  .hz-btns{display:flex;gap:8px;flex-wrap:wrap;margin:6px 0 14px;align-items:center}
+  .hz-dlg .btn{font:600 13.5px/1.1 var(--ft)!important;text-transform:none!important;letter-spacing:0!important;padding:10px 16px!important;border-radius:10px!important;
+    border:1px solid var(--ln)!important;background:var(--b2)!important;background-image:none!important;color:var(--tx)!important;box-shadow:none!important;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;gap:6px}
+  .hz-dlg .btn:hover{border-color:var(--mu)!important}
+  .hz-dlg .btn.primary{background:var(--sol)!important;border-color:var(--sol)!important;color:#241600!important}
+  .hz-dlg .btn.primary:hover{filter:brightness(1.07)}
+  .hz-dlg .btn:disabled{opacity:.55;cursor:wait}
+  .hz-split{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);gap:18px;align-items:start}
+  .hz-map{width:100%;border:1px solid var(--ln);border-radius:14px;background:#e9eef0;display:block}
+  .hz-tab{width:100%;border-collapse:collapse;font-size:13.5px}
+  .hz-tab th,.hz-tab td{padding:8px 7px;border-bottom:1px solid var(--ln);text-align:left;vertical-align:middle}
+  .hz-tab th{font-size:12px;font-weight:500;color:var(--mu)}
+  .hz-tab td.n,.hz-tab th.n{text-align:right;font-variant-numeric:tabular-nums}
+  .hz-tab a{color:var(--sol);font-weight:600}
+  .hz-tab small,.hz-dlg .muted{color:var(--mu)}
+  .hz-pin{display:inline-grid;place-items:center;width:24px;height:24px;border-radius:50%;color:#fff;font:700 12px var(--fd);box-shadow:0 0 0 2px var(--b0),0 0 0 3px currentColor}
+  .hz-empty{padding:22px;border:1px dashed var(--ln);border-radius:14px;color:var(--mu);text-align:center}
+  .hz-read{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:1px;background:var(--ln);border:1px solid var(--ln);border-radius:14px;overflow:hidden;margin:4px 0 14px}
+  .hz-read>div{background:var(--b1);padding:12px 14px}
+  .hz-read strong{display:block;font:600 26px/1.15 var(--fd);font-variant-numeric:tabular-nums;color:var(--tx)}
+  .hz-read span{font-size:12.5px;color:var(--mu)}
+  .hz-read .sol strong{color:var(--sol)} .hz-read .hoja strong{color:var(--hoja)} .hz-read .alerta strong{color:var(--alerta)}
+  .hz-bal{display:flex;height:14px;border-radius:7px;overflow:hidden;gap:2px;margin:0 0 6px}
+  .hz-bal i{display:block}
+  .hz-leg{display:flex;gap:8px;align-items:center;font-size:12.5px;color:var(--mu);margin-top:8px}
   .hz-leg i{flex:1;height:10px;border-radius:5px;background:linear-gradient(90deg,#b2182b,#ef8a62,#f7f7f7,#7fbf7b,#1b7837)}
-  .hz-empty{padding:18px;border:1px dashed var(--line,#d5dde6);border-radius:12px;color:var(--muted,#5e6e82);text-align:center}
+  .hz-set{border:1px solid var(--ln);border-radius:14px;padding:12px 14px 2px;margin:0 0 14px;background:rgba(255,255,255,.015)}
+  .hz-set legend{display:flex;align-items:center;gap:8px;padding:0 6px;font:600 15px var(--fd);color:var(--tx)}
+  .hz-set legend svg{width:20px;height:20px;color:var(--sol)}
+  .hz-total{display:flex;align-items:baseline;justify-content:flex-end;gap:14px;flex-wrap:wrap;margin:6px 0 6px}
+  .hz-total span{color:var(--mu)} .hz-total strong{font:700 40px/1 var(--fd);color:var(--sol);font-variant-numeric:tabular-nums}
   .hz-tot td{font-weight:700}
-  @media (max-width:760px){.hz-split{grid-template-columns:1fr}.hz-box{height:100dvh;border-radius:0}.hz-dlg{padding:0}}`;
+  .hz-dlg details summary{cursor:pointer;font-weight:600;color:var(--tx)}
+  /* Clima */
+  .hz-wx{display:grid;grid-template-columns:240px minmax(0,1fr);gap:22px;align-items:center;padding:16px;border:1px solid var(--ln);border-radius:18px;background:radial-gradient(120% 140% at 0% 0%,rgba(246,166,35,.08),transparent 55%),var(--b1);margin-bottom:16px}
+  .hz-dial{width:240px;height:240px;display:block}
+  .hz-state{font:700 32px/1.05 var(--fd);margin:0 0 6px;display:flex;align-items:center;gap:10px}
+  .hz-state i{width:16px;height:16px;border-radius:50%;box-shadow:0 0 0 5px color-mix(in srgb,currentColor 22%,transparent);background:currentColor}
+  .hz-why{margin:0 0 12px;color:var(--mu)}
+  .hz-why b{color:var(--tx);font-weight:600}
+  .hz-strip{display:grid;grid-template-columns:repeat(48,minmax(0,1fr));align-items:end;gap:2px;height:96px;padding:0 0 4px;border-bottom:1px solid var(--ln)}
+  .hz-strip i{display:block;border-radius:3px 3px 0 0;min-height:6px}
+  .hz-strip i.nuevo-dia{box-shadow:-3px 0 0 -1px var(--mu)}
+  .hz-hours{display:grid;grid-template-columns:repeat(48,minmax(0,1fr));font-size:11px;color:var(--mu);margin-top:4px}
+  .hz-hours span{white-space:nowrap}
+  .hz-win{display:flex;gap:8px;flex-wrap:wrap;margin:4px 0 6px}
+  .hz-win span{display:inline-flex;align-items:center;gap:8px;padding:8px 14px;border-radius:12px;border:1px solid color-mix(in srgb,var(--hoja) 55%,transparent);background:color-mix(in srgb,var(--hoja) 14%,transparent);font-weight:600}
+  .hz-win span b{font:600 15px var(--fd);color:var(--hoja)}
+  @media (prefers-reduced-motion:no-preference){.hz-dial .aguja{transition:transform .6s cubic-bezier(.2,.8,.2,1)}}
+  @media (max-width:860px){.hz-box{grid-template-columns:1fr;grid-template-rows:auto minmax(0,1fr)}.hz-rail{flex-direction:row;padding:8px;overflow-x:auto;border-right:0;border-bottom:1px solid var(--ln)}
+    .hz-rail h2,.hz-brand,.hz-nav button small{display:none}.hz-nav{display:flex}.hz-nav button{grid-template-columns:32px auto;white-space:nowrap}.hz-nav button svg{width:32px;height:32px;padding:6px}
+    .hz-split,.hz-wx{grid-template-columns:1fr}.hz-dial{margin:0 auto}}
+  @media (max-width:760px){.hz-box{height:100dvh;border-radius:0}.hz-dlg{padding:0}}`;
   document.head.appendChild(css);
 
   // ---------- Ventana ----------
   const dlg = document.createElement('div');
   dlg.className = 'hz-dlg'; dlg.hidden = true;
   dlg.innerHTML = `<div class="hz-box" role="dialog" aria-modal="true" aria-label="Herramientas">
-    <div class="hz-top"><h2>Herramientas</h2>
-      <div class="hz-tabs" role="tablist">
-        <button role="tab" data-t="puntos" aria-selected="true">Puntos de inspección</button>
-        <button role="tab" data-t="comparar" aria-selected="false">Comparar vuelos</button>
-        <button role="tab" data-t="cuaderno" aria-selected="false">Cuaderno de campo</button>
-        <button role="tab" data-t="cotizador" aria-selected="false">Cotizador</button>
-        <button role="tab" data-t="clima" aria-selected="false">Clima</button>
-      </div>
-      <button class="hz-x" type="button" aria-label="Cerrar">×</button></div>
-    <div class="hz-body">
-      <section data-s="puntos"></section><section data-s="comparar" hidden></section>
-      <section data-s="cuaderno" hidden></section><section data-s="cotizador" hidden></section><section data-s="clima" hidden></section>
-    </div></div>`;
+    <aside class="hz-rail"><h2>Herramientas</h2>
+      <nav class="hz-nav hz-tabs" role="tablist" aria-orientation="vertical">
+        ${TOOLS.map(x => `<button role="tab" data-t="${x.t}" aria-selected="false">${ICO[x.t]}<b>${x.n}</b><small>${x.d}</small></button>`).join('')}
+      </nav>
+      <div class="hz-brand" id="hzBrand"></div></aside>
+    <div class="hz-main">
+      <div class="hz-head"><div class="ic" id="hzHIco"></div><div><h3 id="hzHTit"></h3><p id="hzHSub"></p></div>
+        <button class="hz-x" type="button" aria-label="Cerrar">×</button></div>
+      <div class="hz-body">
+        <section data-s="puntos"></section><section data-s="comparar" hidden></section><section data-s="clima" hidden></section>
+        <section data-s="cuaderno" hidden></section><section data-s="cotizador" hidden></section>
+      </div></div></div>`;
+  const SUB = {
+    puntos: 'El centro de las manchas de vigor más bajo y algunas de vigor alto para comparar, listos para el GPS o el celular.',
+    comparar: 'Carga el índice de dos fechas del mismo predio y ve dónde mejoró o empeoró el vigor.',
+    clima: 'Condiciones y pronóstico hora a hora en la ubicación del vuelo, con un semáforo de cuándo conviene aplicar.',
+    cuaderno: 'Registra cada aplicación: queda la trazabilidad que piden exportadoras y certificaciones.',
+    cotizador: 'Arma la cotización del servicio con la superficie del proyecto.',
+  };
   const sec = n => dlg.querySelector('section[data-s="' + n + '"]');
   let pestana = 'puntos';
   function abrir(t) {
@@ -139,6 +228,10 @@ ${cuerpo}</div></body></html>`;
     dlg.hidden = false;
     dlg.querySelectorAll('.hz-tabs button').forEach(b => b.setAttribute('aria-selected', String(b.dataset.t === pestana)));
     dlg.querySelectorAll('.hz-body section').forEach(s => { s.hidden = s.dataset.s !== pestana; });
+    const x = TOOLS.find(y => y.t === pestana);
+    $('hzHIco').innerHTML = ICO[pestana]; $('hzHTit').textContent = x.n; $('hzHSub').textContent = SUB[pestana];
+    const lg = window.PrescriptorLogoClaro ? window.PrescriptorLogoClaro() : '';
+    $('hzBrand').innerHTML = lg ? `<img src="${lg}" alt="Summit Agro">` : '';
     const r = ({ puntos: initPuntos, comparar: initComparar, cuaderno: initCuaderno, cotizador: initCotizador, clima: initClima })[pestana]();
     if (pestana === 'cuaderno') Promise.resolve(r).then(aplicarClimaPendiente);
   }
@@ -204,7 +297,11 @@ ${cuerpo}</div></body></html>`;
     const ix = indice(), gm = p => `https://www.google.com/maps/search/?api=1&query=${p.lat.toFixed(7)},${p.lon.toFixed(7)}`;
     const ruta = 'https://www.google.com/maps/dir/?api=1&travelmode=walking&destination=' + puntos[puntos.length - 1].lat.toFixed(7) + ',' + puntos[puntos.length - 1].lon.toFixed(7) +
       (puntos.length > 1 ? '&waypoints=' + puntos.slice(0, -1).slice(0, 9).map(p => p.lat.toFixed(7) + ',' + p.lon.toFixed(7)).join('%7C') : '');
-    out.innerHTML = `<div class="hz-split"><div><img class="hz-map" id="hzPMap" alt="Mapa de puntos"></div><div>
+    out.innerHTML = `<div class="hz-read" style="max-width:640px">
+        <div class="alerta"><strong>${bajo.length}</strong><span>Puntos de vigor bajo</span></div>
+        <div class="hoja"><strong>${alto.length}</strong><span>Puntos de referencia</span></div>
+        <div class="sol"><strong>${num(bajo.reduce((t, p) => t + p.ha, 0), 2)}<small style="font-size:15px"> ha</small></strong><span>Superficie en las manchas a revisar</span></div></div>
+      <div class="hz-split"><div><img class="hz-map" id="hzPMap" alt="Mapa de puntos"></div><div>
       <table class="hz-tab"><thead><tr><th>#</th><th>Tipo</th><th class="n">ha</th><th class="n">${ix}</th><th>Ubicación</th></tr></thead><tbody>
       ${puntos.map(p => `<tr><td><span class="hz-pin" style="background:${p.tipo === 'bajo' ? '#1a1b23' : '#1e6fe0'}">${p.n}</span></td>
         <td>${p.tipo === 'bajo' ? 'Vigor bajo' : 'Referencia'}<br><small class="muted">tasa ${p.clase} · ${p.cuadros} cuadros</small></td>
@@ -356,11 +453,13 @@ ${ps.map(p => `<wpt lat="${p.lat.toFixed(7)}" lon="${p.lon.toFixed(7)}"><name>${
       const R = { A, B, n, mej, emp, est, media: suma / n, mediaA: sA / n, mediaB: sB / n, ha: n * pxHa, cobertura: solape / validosA, U };
       const png = mapaCambio(diff, A.w, A.h, U);
       const fA = $('hzFA').value, fB = $('hzFB').value, ix = indice(), pct = v => num(100 * v / n, 1) + ' %';
-      out.innerHTML = `<div class="hz-cards">
-          <div><strong style="color:#1b7837">${pct(mej)}</strong><span>mejoró (≥ +${num(U, 2)})</span></div>
-          <div><strong style="color:#b2182b">${pct(emp)}</strong><span>empeoró (≤ −${num(U, 2)})</span></div>
-          <div><strong>${pct(est)}</strong><span>sin cambio relevante</span></div>
-          <div><strong>${(R.media >= 0 ? '+' : '') + num(R.media, 3)}</strong><span>cambio medio del ${ix} (${num(R.mediaA, 2)} → ${num(R.mediaB, 2)})</span></div></div>
+      out.innerHTML = `<div class="hz-read">
+          <div class="hoja"><strong>${pct(mej)}</strong><span>Mejoró (sube ${num(U, 2)} o más)</span></div>
+          <div class="alerta"><strong>${pct(emp)}</strong><span>Empeoró (baja ${num(U, 2)} o más)</span></div>
+          <div><strong>${pct(est)}</strong><span>Sin cambio relevante</span></div>
+          <div class="sol"><strong>${(R.media >= 0 ? '+' : '') + num(R.media, 3)}</strong><span>Cambio medio del ${ix}: de ${num(R.mediaA, 2)} a ${num(R.mediaB, 2)}</span></div></div>
+        <div class="hz-bal" aria-hidden="true"><i style="flex:${mej};background:#74BF56"></i><i style="flex:${est};background:#5a7480"></i><i style="flex:${emp};background:#E5583F"></i></div>
+        <p class="hint" style="margin-bottom:16px">Balance de la superficie comparada: verde mejoró, gris sin cambio, rojo empeoró.</p>
         <div class="hz-split"><div><img class="hz-map" id="hzCMap" src="${png}" alt="Mapa de cambio">
           <div class="hz-leg">empeoró <i></i> mejoró</div></div>
         <div><table class="hz-tab"><tbody>
@@ -409,6 +508,11 @@ ${ps.map(p => `<wpt lat="${p.lat.toFixed(7)}" lon="${p.lon.toFixed(7)}"><name>${
     ['dron', 'Dron', 'text'], ['operador', 'Operador / piloto', 'text'], ['temp', 'Temperatura (°C)', 'number'], ['viento', 'Viento (km/h)', 'number'],
     ['hr', 'Humedad relativa (%)', 'number'], ['obs', 'Observaciones', 'text'],
   ];
+  const GRUPOS = [
+    { n: 'Aplicación', ico: ICO.puntos, k: ['fecha', 'predio', 'cultivo', 'ha', 'objetivo'] },
+    { n: 'Producto', ico: ICO.cuaderno, k: ['producto', 'ia', 'dosis', 'caldo', 'carencia', 'reingreso'] },
+    { n: 'Equipo y condiciones', ico: ICO.clima, k: ['dron', 'operador', 'temp', 'viento', 'hr', 'obs'] },
+  ];
   const registros = () => ls.get(CK, []);
   async function initCuaderno() {
     const s = sec('cuaderno');
@@ -416,7 +520,8 @@ ${ps.map(p => `<wpt lat="${p.lat.toFixed(7)}" lon="${p.lon.toFixed(7)}"><name>${
       s.dataset.ok = 1;
       s.innerHTML = `<h3>Cuaderno de campo</h3>
         <p class="hint">Registra cada aplicación: queda la trazabilidad que piden las exportadoras y certificaciones, y puedes entregar un certificado al productor.</p>
-        <div class="hz-grid" id="hzCForm">${CAMPOS.map(([k, t, ty]) => `<label${k === 'obs' ? ' class="wide"' : ''}>${t}<input id="hzC_${k}" type="${ty}"${ty === 'number' ? ' step="any" min="0"' : ''}></label>`).join('')}</div>
+        <div id="hzCForm">${GRUPOS.map(g => `<fieldset class="hz-set"><legend>${g.ico}${g.n}</legend><div class="hz-grid">${g.k.map(k => { const [, t, ty] = CAMPOS.find(c => c[0] === k);
+          return `<label${k === 'obs' ? ' class="wide"' : ''}>${t}<input id="hzC_${k}" type="${ty}"${ty === 'number' ? ' step="any" min="0"' : ''}></label>`; }).join('')}</div></fieldset>`).join('')}</div>
         <div class="hz-btns"><button class="btn primary" id="hzCSave" type="button">Guardar registro</button><button class="btn" id="hzCAuto" type="button">Completar con la prescripción actual</button></div>
         <p class="hint" id="hzCCar"></p>
         <div id="hzCList"></div>`;
@@ -508,6 +613,7 @@ ${ps.map(p => `<wpt lat="${p.lat.toFixed(7)}" lon="${p.lon.toFixed(7)}"><name>${
         <label style="align-self:end;display:flex;gap:8px;align-items:center"><input id="hzQIva" type="checkbox" style="width:auto" ${cfg.iva ? 'checked' : ''}> Agregar IVA (19 %)</label>
         <label class="wide">Notas<input id="hzQNot" type="text" placeholder="Ej.: incluye vuelo multiespectral previo y prescripción."></label>
       </div>
+      <div class="hz-total"><span>Total de la cotización</span><strong id="hzQBig">$ 0</strong></div>
       <table class="hz-tab" style="max-width:420px;margin-left:auto"><tbody id="hzQTot"></tbody></table>
       <div class="hz-btns" style="justify-content:flex-end"><button class="btn primary" id="hzQGen" type="button">Generar cotización</button></div>`;
     const tb = $('hzQTab').querySelector('tbody');
@@ -551,6 +657,7 @@ ${ps.map(p => `<wpt lat="${p.lat.toFixed(7)}" lon="${p.lon.toFixed(7)}"><name>${
     if (!$('hzQTot')) return;
     const r = calc();
     r.lineas.forEach(l => { l.tr.querySelector('.s').textContent = clp(l.s); });
+    if ($('hzQBig')) $('hzQBig').textContent = clp(r.total);
     $('hzQTot').innerHTML = (r.ajusteMin ? `<tr><td>Ajuste a cargo mínimo</td><td class="n">${clp(r.ajusteMin)}</td></tr>` : '') +
       `<tr><td>Subtotal</td><td class="n">${clp(r.sub)}</td></tr>` + (r.des ? `<tr><td>Descuento</td><td class="n">− ${clp(r.des)}</td></tr>` : '') +
       `<tr><td>Neto</td><td class="n">${clp(r.neto)}</td></tr>` + ($('hzQIva').checked ? `<tr><td>IVA 19 %</td><td class="n">${clp(r.iva)}</td></tr>` : '') +
@@ -754,30 +861,61 @@ ${ps.map(p => `<wpt lat="${p.lat.toFixed(7)}" lon="${p.lon.toFixed(7)}"><name>${
     const ev = evaluar(ahora, L), nv = NIV[ev.nivel], vs = ventanas(hs, L);
     $('hzWAct').hidden = false;
     $('hzWDonde').innerHTML = esc(lugar.nombre) + ' · ' + lugar.lat.toFixed(4) + ', ' + lugar.lon.toFixed(4) + ' · consultado a las ' + hora.toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' });
+    const NC = ['#74BF56', '#E8B931', '#E5583F'];
+    const col = NC[ev.nivel], estado = ['Apto para aplicar', 'Aplicar con precaución', 'No aplicar ahora'][ev.nivel];
+    const vmaxEsc = Math.max(L.vMax * 1.6, 25, ...hs.map(h => h.viento || 0));
     $('hzWRes').innerHTML = `
-      <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;padding:12px 14px;border-radius:14px;border:2px solid ${nv.c};margin:6px 0 10px">
-        <strong style="font-size:20px;color:${nv.c}">${nv.e} Ahora: ${nv.t}</strong>
-        <span class="hint" style="margin:0">${ev.motivos.length ? esc(ev.motivos.join(' · ')) : 'Condiciones dentro de los límites configurados.'}</span>
-        <button class="btn" id="hzWCuad" type="button" style="margin-left:auto">Usar en el cuaderno de campo</button></div>
-      <div class="hz-cards">
-        <div><strong>${num(ahora.temp, 1)} °C</strong><span>temperatura</span></div>
-        <div><strong>${num(ahora.viento, 0)} km/h</strong><span>viento ${rumbo(ahora.dir)} · ráfagas ${num(ahora.rafaga, 0)} km/h</span></div>
-        <div><strong>${num(ahora.hr, 0)} %</strong><span>humedad relativa</span></div>
-        <div><strong>${num(ahora.dt, 1)}</strong><span>Delta T (ideal ${num(L.dtMin, 0)}–${num(L.dtMax, 0)})</span></div>
-        <div><strong>${num(ahora.lluvia, 1)} mm</strong><span>lluvia${Number.isFinite(ahora.prob) ? ' · prob. ' + num(ahora.prob, 0) + ' %' : ''}</span></div>
+      <div class="hz-wx">
+        ${dialViento(ahora, L, col)}
+        <div>
+          <p class="hz-state" style="color:${col}"><i></i>${estado}</p>
+          <p class="hz-why">${ev.motivos.length ? 'Atención: <b>' + esc(ev.motivos.join(', ')) + '</b>.' : 'Todas las condiciones están dentro de tus límites.'}</p>
+          <div class="hz-read">
+            <div><strong>${num(ahora.temp, 1)}°</strong><span>Temperatura</span></div>
+            <div><strong>${num(ahora.hr, 0)}%</strong><span>Humedad relativa</span></div>
+            <div class="${ahora.dt >= L.dtMin && ahora.dt <= L.dtMax ? 'hoja' : 'sol'}"><strong>${num(ahora.dt, 1)}</strong><span>Delta T (ideal ${num(L.dtMin, 0)} a ${num(L.dtMax, 0)})</span></div>
+            <div><strong>${num(ahora.lluvia, 1)}<small style="font-size:15px"> mm</small></strong><span>Lluvia${Number.isFinite(ahora.prob) ? ', probabilidad ' + num(ahora.prob, 0) + '%' : ''}</span></div>
+          </div>
+          <button class="btn primary" id="hzWCuad" type="button">Usar en el cuaderno de campo</button>
+        </div>
       </div>
-      <h3 style="margin-top:14px">Mejores ventanas para aplicar</h3>
-      ${vs.length ? '<div class="hz-btns">' + vs.map(v => `<span class="chip" style="background:#1f8a4c;color:#fff;padding:6px 12px;border-radius:999px;font-weight:700;font-size:13px">${diaHora(v.ini)}–${v.fin.slice(11, 13)}:59 · ${v.n} h</span>`).join('') + '</div>'
-        : '<p class="hint">No hay dos horas seguidas aptas (de 6 a 21 h) en las próximas 48 horas con los límites configurados.</p>'}
-      <h3 style="margin-top:14px">Próximas 48 horas</h3>
-      <div style="overflow-x:auto"><table class="hz-tab" style="min-width:760px"><thead><tr><th>Hora</th><th></th><th class="n">°C</th><th class="n">Viento</th><th class="n">Ráfagas</th><th>Dir.</th><th class="n">HR %</th><th class="n">Delta T</th><th class="n">Lluvia</th><th>Motivo</th></tr></thead><tbody>
-      ${hs.map(h => { const e = evaluar(h, L); const nn = NIV[e.nivel]; return `<tr style="background:color-mix(in srgb, ${nn.c} 9%, transparent)">
-        <td style="white-space:nowrap">${diaHora(h.t)}</td><td title="${nn.t}">${nn.e}</td><td class="n">${num(h.temp, 0)}</td><td class="n">${num(h.viento, 0)}</td><td class="n">${num(h.rafaga, 0)}</td>
+      <h3>Mejores ventanas para aplicar</h3>
+      ${vs.length ? '<div class="hz-win">' + vs.map(v => `<span><b>${diaHora(v.ini)}–${v.fin.slice(11, 13)}:59</b>${v.n} horas seguidas</span>`).join('') + '</div>'
+        : '<p class="hint">No hay dos horas seguidas aptas entre las 6 y las 21 h en las próximas 48 horas con tus límites.</p>'}
+      <h3>Próximas 48 horas</h3>
+      <p class="hint">La altura de cada barra es la velocidad del viento; el color, el semáforo de esa hora. Pasa el cursor sobre una barra para ver el detalle.</p>
+      <div class="hz-strip">${hs.map((h, k) => { const e = evaluar(h, L);
+        return `<i class="${k && h.t.slice(11, 13) === '00' ? 'nuevo-dia' : ''}" style="height:${Math.max(6, Math.min(100, 100 * (h.viento || 0) / vmaxEsc))}%;background:${NC[e.nivel]}" title="${esc(diaHora(h.t) + ' · ' + ['Apto', 'Precaución', 'No aplicar'][e.nivel] + ' · viento ' + num(h.viento, 0) + ' km/h, ráfagas ' + num(h.rafaga, 0) + ' · ' + num(h.temp, 0) + '° · Delta T ' + num(h.dt, 1) + (e.motivos.length ? ' · ' + e.motivos.join(', ') : ''))}"></i>`; }).join('')}</div>
+      <div class="hz-hours">${hs.map((h, k) => `<span>${k % 6 === 0 ? (h.t.slice(11, 13) === '00' || k === 0 ? diaHora(h.t).replace(/ \d\d:00$/, '') + ' ' : '') + h.t.slice(11, 13) + 'h' : ''}</span>`).join('')}</div>
+      <details style="margin-top:14px"><summary>Ver tabla hora a hora</summary>
+      <div style="overflow-x:auto;margin-top:8px"><table class="hz-tab" style="min-width:760px"><thead><tr><th>Hora</th><th>Estado</th><th class="n">°C</th><th class="n">Viento</th><th class="n">Ráfagas</th><th>Dirección</th><th class="n">HR %</th><th class="n">Delta T</th><th class="n">Lluvia</th><th>Motivo</th></tr></thead><tbody>
+      ${hs.map(h => { const e = evaluar(h, L); return `<tr>
+        <td style="white-space:nowrap">${diaHora(h.t)}</td><td><span style="color:${NC[e.nivel]};font-weight:600">● ${['Apto', 'Precaución', 'No aplicar'][e.nivel]}</span></td><td class="n">${num(h.temp, 0)}</td><td class="n">${num(h.viento, 0)}</td><td class="n">${num(h.rafaga, 0)}</td>
         <td>${rumbo(h.dir)}</td><td class="n">${num(h.hr, 0)}</td><td class="n">${num(h.dt, 1)}</td>
-        <td class="n">${h.lluvia > 0 ? num(h.lluvia, 1) + ' mm' : (Number.isFinite(h.prob) && h.prob ? num(h.prob, 0) + ' %' : '—')}</td>
-        <td><small>${esc(e.motivos.join(' · '))}</small></td></tr>`; }).join('')}
-      </tbody></table></div>`;
+        <td class="n">${h.lluvia > 0 ? num(h.lluvia, 1) + ' mm' : (Number.isFinite(h.prob) && h.prob ? num(h.prob, 0) + '%' : '—')}</td>
+        <td><small>${esc(e.motivos.join(', '))}</small></td></tr>`; }).join('')}
+      </tbody></table></div></details>`;
     $('hzWCuad').onclick = () => { climaPendiente = { temp: ahora.temp, viento: ahora.viento, hr: ahora.hr, lugar: lugar.nombre, nivel: nv.t }; abrir('cuaderno'); };
+  }
+  function dialViento(a, L, col) {
+    const R = 100, cx = 120, cy = 120, ang = Number.isFinite(a.dir) ? a.dir : 0;
+    const marcas = Array.from({ length: 72 }, (_, i) => { const t = i * 5 * Math.PI / 180, l = i % 6 === 0 ? 10 : 4;
+      return `<line x1="${cx + Math.sin(t) * R}" y1="${cy - Math.cos(t) * R}" x2="${cx + Math.sin(t) * (R - l)}" y2="${cy - Math.cos(t) * (R - l)}" stroke="#4d6f7b" stroke-width="${i % 6 === 0 ? 1.6 : 1}"/>`; }).join('');
+    const pts = [['N', 0], ['E', 90], ['S', 180], ['O', 270]].map(([n, g]) => { const t = g * Math.PI / 180;
+      return `<text x="${cx + Math.sin(t) * (R - 22)}" y="${cy - Math.cos(t) * (R - 22) + 5}" text-anchor="middle" font-family="Chakra Petch,sans-serif" font-size="14" font-weight="600" fill="${n === 'N' ? '#F6A623' : '#93AEB3'}">${n}</text>`; }).join('');
+    // Arco de velocidad: hasta el viento máximo configurado = 3/4 de vuelta
+    const frac = Math.max(0, Math.min(1, (a.viento || 0) / (L.vMax || 15))), largo = 2 * Math.PI * (R + 9);
+    return `<svg class="hz-dial" viewBox="0 0 240 240" role="img" aria-label="Viento ${num(a.viento, 0)} km/h desde el ${rumbo(a.dir)}, ráfagas ${num(a.rafaga, 0)} km/h">
+      <circle cx="${cx}" cy="${cy}" r="${R + 9}" fill="none" stroke="#24414c" stroke-width="7"/>
+      <circle cx="${cx}" cy="${cy}" r="${R + 9}" fill="none" stroke="${col}" stroke-width="7" stroke-linecap="round" stroke-dasharray="${largo * .75 * frac} ${largo}" transform="rotate(135 ${cx} ${cy})"/>
+      <circle cx="${cx}" cy="${cy}" r="${R}" fill="#10232b"/>${marcas}${pts}
+      <g class="aguja" style="transform-origin:${cx}px ${cy}px;transform:rotate(${ang + 180}deg)">
+        <path d="M${cx} ${cy - 78} l9 22 h-6 v34 h-6 v-34 h-6z" fill="${col}"/><path d="M${cx - 3} ${cy + 46} h6 v24 h-6z" fill="#4d6f7b"/></g>
+      <circle cx="${cx}" cy="${cy}" r="34" fill="#152B35" stroke="#2A4B58"/>
+      <text x="${cx}" y="${cy + 4}" text-anchor="middle" font-family="Chakra Petch,sans-serif" font-size="30" font-weight="700" fill="#EAF2EF">${num(a.viento, 0)}</text>
+      <text x="${cx}" y="${cy + 21}" text-anchor="middle" font-family="IBM Plex Sans,sans-serif" font-size="11" fill="#93AEB3">km/h</text>
+      <text x="${cx}" y="236" text-anchor="middle" font-family="IBM Plex Sans,sans-serif" font-size="12" fill="#93AEB3">desde el ${rumbo(a.dir)} · ráfagas ${num(a.rafaga, 0)} km/h</text>
+    </svg>`;
   }
   // Pasa las condiciones al formulario del cuaderno de campo
   function aplicarClimaPendiente() {

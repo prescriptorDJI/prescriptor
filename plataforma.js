@@ -333,4 +333,6 @@
   window.PrescriptorIndice = { get: () => actual, lista: INDICES.map(i => i.id), info: id => INDICES.find(i => i.id === id) };
   // Logo con texto oscuro, para documentos de fondo blanco (cotizaciones, certificados)
   window.PrescriptorLogo = () => LOGOS.oscuro || LOGOS.claro || '';
+  // Logo con texto blanco, para fondos oscuros
+  window.PrescriptorLogoClaro = () => LOGOS.claro || LOGOS.oscuro || '';
 })();
