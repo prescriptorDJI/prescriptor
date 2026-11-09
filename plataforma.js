@@ -1,9 +1,8 @@
 /* =====================================================================
    Ajustes de la plataforma Prescriptor (se cargan sobre la app cifrada)
-   - Logo de Summit Agro incorporado para todos (también en los informes); nadie puede subir otro
+   - Logo: espacio «Tu logo» en la barra superior para subir el logo de tu empresa (sale también en los informes)
    - Nombre del usuario de la sesión en la barra superior
    - Selector de índice en la barra superior: NDVI, GNDVI, LCI, NDRE u OSAVI
-   Logos: logo.png (texto blanco, para fondos oscuros) y logo-oscuro.png (texto oscuro, para fondos claros).
    ===================================================================== */
 (() => {
   if (window.__prescPlataforma) return;
@@ -37,7 +36,6 @@
   // ---------- Estilos ----------
   const css = document.createElement('style');
   css.textContent = `
-    #userLogoBtn, #userLogoDel, #userLogoIn { display: none !important; }
     .ses-user { display: inline-flex; align-items: center; gap: 8px; padding: 6px 14px; border-radius: 999px;
       border: 1px solid var(--line, #d5dde6); color: var(--fg, #1a1b23); font-weight: 700; font-size: 14px; white-space: nowrap;
       max-width: 260px; overflow: hidden; text-overflow: ellipsis; }
@@ -86,20 +84,8 @@
     box.hidden = false;
   }
 
-  async function logo() {
-    const box = $('userLogoBox'), img = $('userLogo'), input = $('userLogoIn');
-    if (input) { input.disabled = true; input.remove(); }
-    try { localStorage.removeItem('presc_logo'); } catch (e) {}
-    if (!box || !img) return;
-    box.hidden = true; img.removeAttribute('src');
-    const [claro, oscuro] = await Promise.allSettled([comoDataURL(LOGO_URL), comoDataURL(LOGO_OSCURO_URL)]);
-    LOGOS.claro = claro.status === 'fulfilled' ? claro.value : null;
-    LOGOS.oscuro = oscuro.status === 'fulfilled' ? oscuro.value : null;
-    ponerLogo();
-    // Al cambiar de apariencia (o de tema claro/oscuro) se cambia la versión del logo
-    new MutationObserver(() => setTimeout(ponerLogo, 30))
-      .observe(document.documentElement, { attributes: true, attributeFilter: ['data-skin', 'data-theme', 'class'] });
-  }
+  // Sin logo incorporado: queda el espacio «Tu logo» de la app para subir el logo que quieras
+  function logo() {}
 
   // Informe: siempre fondo blanco, así que lleva el logo con texto oscuro
   function prepararInforme(h) {
@@ -332,7 +318,8 @@
 
   window.PrescriptorIndice = { get: () => actual, lista: INDICES.map(i => i.id), info: id => INDICES.find(i => i.id === id) };
   // Logo con texto oscuro, para documentos de fondo blanco (cotizaciones, certificados)
-  window.PrescriptorLogo = () => LOGOS.oscuro || LOGOS.claro || '';
+  const logoUsuario = () => { const b = $('userLogoBox'), i = $('userLogo'); return b && i && !b.hidden && i.src ? i.src : ''; };
+  window.PrescriptorLogo = () => logoUsuario();
   // Logo con texto blanco, para fondos oscuros
-  window.PrescriptorLogoClaro = () => LOGOS.claro || LOGOS.oscuro || '';
+  window.PrescriptorLogoClaro = () => logoUsuario();
 })();
