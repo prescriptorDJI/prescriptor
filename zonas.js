@@ -3,6 +3,7 @@
    En el paso 4 «Clases y dosis» agrega «Crear polígonos de vuelo»: separa cada tasa en sus manchas
    (grupos continuos de cuadros) y permite descargar cada mancha como shapefile, o todas en un .zip.
    Sirve para volar solo una mancha. Todo en WGS84 (EPSG:4326).
+   Cada mancha se puede marcar para verla en el mapa principal; al pulsarla, el mapa se acerca a ella.
    Usa la exportación «Cuadros .geojson» que ya tiene la plataforma, sin modificar la aplicación.
    ===================================================================== */
 (() => {
@@ -285,8 +286,13 @@
     }
     let x1 = Infinity, y1 = Infinity, x2 = -Infinity, y2 = -Infinity;
     for (const m of manchas) for (const p of m.polys) for (const [x, y] of p[0]) { x1 = Math.min(x1, x); y1 = Math.min(y1, y); x2 = Math.max(x2, x); y2 = Math.max(y2, y); }
-    estado = { base: base(), manchas, nTasas, variasAreas, bbox: [x1, y1, x2, y2], desactualizado: false };
-    pintar();
+    for (const m of manchas) {
+      let a = Infinity, b = Infinity, c = -Infinity, d = -Infinity;
+      for (const p of m.polys) for (const [x, y] of p[0]) { a = Math.min(a, x); b = Math.min(b, y); c = Math.max(c, x); d = Math.max(d, y); }
+      m.bbox = [a, b, c, d];
+    }
+    estado = { base: base(), manchas, nTasas, variasAreas, bbox: [x1, y1, x2, y2], desactualizado: false, ver: new Set(manchas.map((_, i) => i)), foco: -1 };
+    pintar(); mapa();
   }
 
   const nombreMancha = m => estado.base + (estado.variasAreas ? '_' + limpio(m.zona) : '') +
@@ -347,6 +353,20 @@
       `<path d="${camino(m.polys)}" fill="${colorTasa(m.tasa, estado.nTasas)}" stroke="var(--fg,#1a1b23)" stroke-width=".6" fill-rule="evenodd"/></svg>`;
   }
 
+  // ---------- Ver las manchas en el mapa principal ----------
+  function mapa() {
+    const O = window.PrescriptorOverlay; if (!O) return;
+    if (!estado) { O.clear(); return; }
+    const vis = new Set(visibles());
+    O.set(estado.manchas.map((m, i) => ({ m, i })).filter(x => estado.ver.has(x.i) && vis.has(x.m)).map(({ m, i }) => ({
+      polys: m.polys, color: colorTasa(m.tasa, estado.nTasas), hi: i === estado.foco,
+      label: (estado.variasAreas ? m.zona + ' · ' : '') + 'T' + m.tasa + ' · M' + m.n + ' · ' + fmt(m.ha, 2) + ' ha' })));
+  }
+  function enfocar(i) {
+    const m = estado.manchas[i]; if (!m) return;
+    estado.foco = i; estado.ver.add(i); pintar(); mapa();
+    if (window.PrescriptorOverlay && window.PrescriptorOverlay.fit) window.PrescriptorOverlay.fit(m.bbox);
+  }
   function pintar() {
     const caja = $('vmLista'); if (!caja || !estado) return;
     const ms = visibles(), ocultas = estado.manchas.length - ms.length;
@@ -355,19 +375,28 @@
     const porTasa = new Map();
     for (const m of ms) { const k = (estado.variasAreas ? m.zona + ' · ' : '') + 'Tasa ' + m.tasa; (porTasa.get(k) || porTasa.set(k, []).get(k)).push(m); }
     let h = estado.desactualizado ? '<p class="vm-aviso">Cambiaste las tasas o el límite: vuelve a pulsar «Crear polígonos de vuelo».</p>' : '';
-    h += `<p class="hint">${ms.length} mancha${ms.length === 1 ? '' : 's'} en ${porTasa.size} grupo${porTasa.size === 1 ? '' : 's'}` + (ocultas ? ` · ${ocultas} más chica${ocultas === 1 ? '' : 's'} oculta${ocultas === 1 ? '' : 's'}` : '') + '.</p>';
+    h += `<p class="hint">${ms.length} mancha${ms.length === 1 ? '' : 's'} en ${porTasa.size} grupo${porTasa.size === 1 ? '' : 's'}` + (ocultas ? ` · ${ocultas} más chica${ocultas === 1 ? '' : 's'} oculta${ocultas === 1 ? '' : 's'}` : '') + '. Marca las que quieras ver en el mapa; pulsa una mancha para ir a ella.</p>';
+    const nv = ms.filter(m => estado.ver.has(estado.manchas.indexOf(m))).length;
+    h += `<div class="vm-ver"><button class="btn" type="button" id="vmVerTodas"${nv === ms.length ? ' disabled' : ''}>Ver todas en el mapa</button><button class="btn" type="button" id="vmVerNinguna"${nv ? '' : ' disabled'}>Ocultar del mapa</button></div>`;
     for (const [titulo, lista] of porTasa) {
       const m0 = lista[0], tot = lista.reduce((t, m) => t + m.ha, 0);
-      h += `<div class="vm-grupo"><div class="vm-tit"><i style="background:${colorTasa(m0.tasa, estado.nTasas)}"></i><b>${titulo}</b> · ${fmt(m0.dosis, 0)} L/ha<span>${fmt(tot, 2)} ha</span></div>`;
+      const ids = lista.map(m => estado.manchas.indexOf(m)), todos = ids.every(i => estado.ver.has(i)), alguno = ids.some(i => estado.ver.has(i));
+      h += `<div class="vm-grupo"><div class="vm-tit"><input type="checkbox" class="vm-chk" data-g="${ids.join(',')}" title="Ver todo este grupo en el mapa"${todos ? ' checked' : ''}${!todos && alguno ? ' data-mixed="1"' : ''}><i style="background:${colorTasa(m0.tasa, estado.nTasas)}"></i><b>${titulo}</b> · ${fmt(m0.dosis, 0)} L/ha<span>${fmt(tot, 2)} ha</span></div>`;
       for (const m of lista) {
         const i = estado.manchas.indexOf(m);
-        h += `<div class="vm-item">${miniatura(m)}<div class="vm-txt"><b>Mancha ${m.n}</b><small>${fmt(m.ha, 2)} ha · ${m.cuadros} cuadro${m.cuadros === 1 ? '' : 's'} · ${fmt(m.litros, 1)} L</small></div>` +
+        h += `<div class="vm-item${i === estado.foco ? ' on' : ''}"><input type="checkbox" class="vm-chk" data-v="${i}" title="Ver esta mancha en el mapa"${estado.ver.has(i) ? ' checked' : ''}><div class="vm-ir" data-ir="${i}" title="Ir a esta mancha en el mapa">${miniatura(m)}<div class="vm-txt"><b>Mancha ${m.n}</b><small>${fmt(m.ha, 2)} ha · ${m.cuadros} cuadro${m.cuadros === 1 ? '' : 's'} · ${fmt(m.litros, 1)} L</small></div></div>` +
           `<button class="btn" type="button" data-i="${i}" title="Descargar esta mancha como shapefile (.zip)">Descargar .shp</button></div>`;
       }
       h += '</div>';
     }
     caja.innerHTML = h;
     caja.querySelectorAll('button[data-i]').forEach(b => b.onclick = () => bajarUna(estado.manchas[+b.dataset.i]));
+    caja.querySelectorAll('input[data-mixed]').forEach(c => c.indeterminate = true);
+    caja.querySelectorAll('input[data-v]').forEach(c => c.onchange = () => { const i = +c.dataset.v; if (c.checked) estado.ver.add(i); else { estado.ver.delete(i); if (estado.foco === i) estado.foco = -1; } pintar(); mapa(); });
+    caja.querySelectorAll('input[data-g]').forEach(c => c.onchange = () => { c.dataset.g.split(',').map(Number).forEach(i => c.checked ? estado.ver.add(i) : estado.ver.delete(i)); pintar(); mapa(); });
+    caja.querySelectorAll('[data-ir]').forEach(d => d.onclick = () => enfocar(+d.dataset.ir));
+    $('vmVerTodas').onclick = () => { visibles().forEach(m => estado.ver.add(estado.manchas.indexOf(m))); pintar(); mapa(); if (window.PrescriptorOverlay) window.PrescriptorOverlay.fit(estado.bbox); };
+    $('vmVerNinguna').onclick = () => { estado.ver.clear(); estado.foco = -1; pintar(); mapa(); };
   }
 
   // ---------- Panel en el paso 4 «Clases y dosis» ----------
@@ -390,6 +419,11 @@
       .vm-txt { flex: 1; min-width: 0; display: grid; }
       .vm-txt b { font-size: 13px; } .vm-txt small { color: var(--muted, #5e6e82); font-size: 11.5px; }
       .vm-item .btn { padding: 6px 10px; font-size: 12px; }
+      .vm-item.on { background: color-mix(in srgb, var(--accent, #1e88ff) 16%, transparent); outline: 1.5px solid var(--accent, #1e88ff); }
+      .vm-ir { flex: 1; min-width: 0; display: flex; align-items: center; gap: 10px; cursor: pointer; }
+      .vm-chk { width: 17px; height: 17px; flex: none; accent-color: var(--accent, #1e88ff); cursor: pointer; margin: 0; }
+      .vm-ver { display: flex; gap: 8px; flex-wrap: wrap; }
+      .vm-ver .btn { padding: 6px 12px; font-size: 12.5px; }
       .vm-aviso { margin: 0; padding: 8px 10px; border-radius: 10px; font-size: 12.5px; background: color-mix(in srgb, #e6a23c 18%, transparent); }`;
     document.head.appendChild(css);
     const panel = document.createElement('div');
@@ -409,7 +443,7 @@
       finally { b.disabled = false; b.textContent = t; }
     };
     $('vmTodas').onclick = () => estado && bajarTodas();
-    $('vmMin').oninput = () => estado && pintar();
+    $('vmMin').oninput = () => { if (estado) { pintar(); mapa(); } };
     // Si cambian las tasas, el método o el límite, la lista queda marcada como desactualizada
     const marcar = () => { if (estado && !estado.desactualizado) { estado.desactualizado = true; pintar(); } };
     ['ctable', 'polyList', 'legend'].forEach(id => { const el = $(id); if (el) new MutationObserver(marcar).observe(el, { childList: true, subtree: true, characterData: true }); });
