@@ -139,17 +139,16 @@
   }
 
   function comparacionGrande(html) {
-    if (!/class="cmp"/.test(html)) return html;
+    if (!/class="cmp/.test(html)) return html;
     const doc = new DOMParser().parseFromString(html, 'text/html');
-    const cmp = doc.querySelector('.cmp'); if (!cmp) return html;
-    const sec = cmp.closest('section') || cmp.parentElement;
-    sec.classList.add('cmp-sec');
-    const figs = [...cmp.querySelectorAll(':scope > figure')];
+    const cmps = [...doc.querySelectorAll('.cmp')]; if (!cmps.length) return html;
+    cmps.forEach(cmp => { const sec = cmp.closest('section') || cmp.parentElement; sec.classList.add('cmp-sec'); });
+    const figs = cmps.flatMap(cmp => [...cmp.querySelectorAll(':scope > figure')]);
     figs.forEach((f, i) => f.classList.add('cmp-fig', 'cmp-fig-' + (i + 1)));
 
-    // Leyenda de la prescripción con el % de cada tasa y de «No aplicar»
-    const rx = figs.find(f => /prescrip/i.test((f.querySelector('.ct') || {}).textContent || '')) || figs[2];
-    const tasas = resumenTasas();
+    // Leyenda de la prescripción con el % de cada tasa (solo si la app no la trae ya calculada por zona)
+    const rx = figs.find(f => /prescrip/i.test((f.querySelector('.ct') || {}).textContent || ''));
+    const tasas = rx && !doc.querySelector('.rx-leg') ? resumenTasas() : null;
     if (rx && tasas && tasas.length) {
       let cap = rx.querySelector('figcaption');
       if (!cap) { cap = doc.createElement('figcaption'); rx.appendChild(cap); }
@@ -177,9 +176,7 @@
       .rx-bar{display:flex;height:14px;border-radius:7px;overflow:hidden;margin-top:10px;gap:2px}
       .rx-tot{font-size:11.5px;color:#5e6e82;margin-top:6px}
       @media print{
-        .cmp-sec{break-before:page;page-break-before:always}
-        .cmp-fig+.cmp-fig{break-before:page;page-break-before:always}
-        .cmp-sec+section{break-before:page;page-break-before:always}
+        .cmp-fig{break-before:page;page-break-before:always}
         .cmp figure img{max-height:235mm;object-fit:contain}
       }`;
     doc.head.appendChild(st);
