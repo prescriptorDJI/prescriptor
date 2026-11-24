@@ -98,15 +98,15 @@
   // ---------- Secciones de la app ----------
   const pasos = () => [...document.querySelectorAll('aside.panel section.step')];
   const numPaso = sec => ((sec.querySelector('h2 b') || {}).textContent || '').trim();
-  const pasoPorNum = n => pasos().find(s => numPaso(s) === n);
+  const pasoPorClave = k => pasos().find(s => s.dataset.k === k);
 
   // ---------- 1) Modo simple / avanzado ----------
   // En modo simple quedan: Proyecto, índice, plantilla, límite, clases y dosis, y exportar.
-  const VISIBLES_SIMPLE = new Set(['0', '1', '3b', '4', '8']);
+  const VISIBLES_SIMPLE = new Set(['proyecto', 'orto', 'limite', 'clases', 'exportar']);
   function marcarAvanzados() {
     for (const s of pasos()) {
       if (s.id === 'psPlantillas') continue;
-      s.classList.toggle('ps-avz', !VISIBLES_SIMPLE.has(numPaso(s)));
+      s.classList.toggle('ps-avz', !VISIBLES_SIMPLE.has(s.dataset.k));
     }
   }
   function setModo(m) {
@@ -176,7 +176,7 @@
   }
 
   function plantillas() {
-    const p1 = pasoPorNum('1');
+    const p1 = pasoPorClave('orto');
     if (!p1 || $('psPlantillas')) return;
     const sec = document.createElement('section');
     sec.className = 'step'; sec.id = 'psPlantillas';
@@ -268,7 +268,7 @@
     aviso('Cargado ' + partes.join(' · ') + '.');
   }
   function cargaRapidaUI() {
-    const p1 = pasoPorNum('1');
+    const p1 = pasoPorClave('orto');
     if (!p1 || $('psDrop')) return;
     const box = document.createElement('div');
     box.className = 'ps-dropwrap';
@@ -397,7 +397,7 @@
     } finally { btn.disabled = false; btn.textContent = txt; }
   }
   function paqueteUI() {
-    const p8 = pasoPorNum('8'), ref = $('expBtn');
+    const p8 = pasoPorClave('exportar'), ref = $('expBtn');
     if (!p8 || !ref || $('psPaquete')) return;
     const w = document.createElement('div');
     w.innerHTML = `<button class="btn primary" id="psPaquete" type="button" style="width:100%;padding:12px">Paquete completo para el Agras (.zip)</button>

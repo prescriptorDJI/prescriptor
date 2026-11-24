@@ -432,6 +432,7 @@
       <p class="hint">Crea un polígono por cada mancha de cada tasa, para volar solo esa mancha. Funciona mejor con el método «Zonificado», que forma manchas continuas.</p>
       <div class="vm-fila">
         <button class="btn primary" id="vmCrear" type="button">Crear polígonos de vuelo</button>
+        <button class="btn" id="vmPlegar" type="button" hidden aria-expanded="true" title="Ocultar o mostrar la lista de manchas">▴ Ocultar lista</button>
         <label class="f"><span>Ocultar manchas menores a (ha)</span><input type="number" id="vmMin" min="0" step="0.01" value="0"></label>
       </div>
       <div id="vmLista"></div>
@@ -443,6 +444,12 @@
       finally { b.disabled = false; b.textContent = t; }
     };
     $('vmTodas').onclick = () => estado && bajarTodas();
+    // Minimizar la lista de manchas sin perderla
+    const lista = $('vmLista'), plegar = $('vmPlegar');
+    const syncPlegar = () => { plegar.hidden = !lista.children.length; const abierta = !lista.hidden; plegar.textContent = abierta ? '▴ Ocultar lista' : '▾ Mostrar lista (' + lista.querySelectorAll('.vm-item').length + ')'; plegar.setAttribute('aria-expanded', String(abierta)); };
+    plegar.onclick = () => { lista.hidden = !lista.hidden; syncPlegar(); };
+    new MutationObserver(syncPlegar).observe(lista, { childList: true });
+    $('vmCrear').addEventListener('click', () => { lista.hidden = false; syncPlegar(); });
     $('vmMin').oninput = () => { if (estado) { pintar(); mapa(); } };
     // Si cambian las tasas, el método o el límite, la lista queda marcada como desactualizada
     const marcar = () => { if (estado && !estado.desactualizado) { estado.desactualizado = true; pintar(); } };
